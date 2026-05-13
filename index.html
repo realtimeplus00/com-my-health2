@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>건강검진 AI 분석기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #181c27;
+  --surface2: #1e2336;
+  --border: #2a3050;
+  --accent: #4fd1c5;
+  --accent2: #f6ad55;
+  --accent3: #fc8181;
+  --text: #e2e8f0;
+  --text2: #8892b0;
+  --text3: #4a5568;
+  --good: #68d391;
+  --warn: #f6ad55;
+  --bad: #fc8181;
+  --radius: 14px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Serif KR', serif;
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+
+/* ── 헤더 ── */
+.header {
+  background: linear-gradient(135deg, #0f1117 0%, #1a1f35 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 20px 16px;
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.header-inner { max-width: 700px; margin: 0 auto; display:flex; align-items:center; gap:12px; }
+.header-icon { font-size: 28px; }
+.header-title { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+.header-sub { font-size: 11px; color: var(--text2); margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+/* ── 탭 ── */
+.tabs {
+  max-width: 700px; margin: 20px auto 0;
+  padding: 0 16px;
+  display: flex; gap: 6px;
+}
+.tab {
+  flex: 1; padding: 10px 0; border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text2); font-size: 13px;
+  font-family: 'Noto Serif KR', serif;
+  cursor: pointer; transition: all .2s;
+}
+.tab.active {
+  background: var(--accent); color: #0f1117;
+  border-color: var(--accent); font-weight: 700;
+}
+
+/* ── 메인 패널 ── */
+.main { max-width: 700px; margin: 0 auto; padding: 16px; }
+
+/* ── 카드 ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px; margin-bottom: 14px;
+}
+.card-title {
+  font-size: 13px; font-weight: 700;
+  color: var(--accent); letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 14px;
+  font-family: 'DM Mono', monospace;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::before { content:''; display:block; width:3px; height:14px; background:var(--accent); border-radius:2px; }
+
+/* ── API 키 설정 ── */
+.api-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+.api-label { font-size: 11px; color: var(--text2); font-family:'DM Mono',monospace; min-width: 56px; }
+.api-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 12px;
+  color: var(--text); font-size: 12px; font-family:'DM Mono',monospace;
+  outline: none; transition: border .2s;
+}
+.api-input:focus { border-color: var(--accent); }
+.api-status {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text3); flex-shrink: 0;
+  transition: background .3s;
+}
+.api-status.active { background: var(--good); box-shadow: 0 0 6px var(--good); }
+.api-status.used { background: var(--warn); }
+.api-status.error { background: var(--bad); }
+
+/* ── 날짜 입력 ── */
+.date-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 11px 14px;
+  color: var(--text); font-size: 15px; font-family: 'Noto Serif KR', serif;
+  outline: none; transition: border .2s;
+}
+.date-input:focus { border-color: var(--accent); }
+
+/* ── 업로드 영역 ── */
+.upload-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 32px 16px; text-align: center;
+  cursor: pointer; transition: all .25s;
+  background: var(--surface2);
+  position: relative; overflow: hidden;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(79,209,197,.05); }
+.upload-icon { font-size: 36px; margin-bottom: 10px; }
+.upload-text { color: var(--text2); font-size: 13px; line-height: 1.6; }
+.upload-hint { color: var(--text3); font-size: 11px; margin-top: 6px; font-family:'DM Mono',monospace; }
+#fileInput { display: none; }
+
+/* ── 미리보기 ── */
+.preview-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px;
+}
+.preview-item {
+  position: relative; border-radius: 8px; overflow: hidden;
+  aspect-ratio: 3/4; background: var(--surface2);
+}
+.preview-item img { width:100%; height:100%; object-fit: cover; }
+.preview-remove {
+  position: absolute; top: 4px; right: 4px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,.7); border: none; color: #fff;
+  font-size: 12px; cursor: pointer; display:flex; align-items:center; justify-content:center;
+}
+.preview-num {
+  position: absolute; bottom: 4px; left: 6px;
+  font-size: 10px; color: rgba(255,255,255,.7); font-family:'DM Mono',monospace;
+}
+
+/* ── 버튼 ── */
+.btn {
+  width: 100%; padding: 14px; border-radius: 10px;
+  border: none; cursor: pointer; font-size: 15px;
+  font-family: 'Noto Serif KR', serif; font-weight: 700;
+  transition: all .2s; letter-spacing: .5px;
+}
+.btn-primary {
+  background: var(--accent); color: #0f1117;
+}
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { background: var(--border); color: var(--text3); cursor: not-allowed; transform: none; }
+.btn-secondary {
+  background: var(--surface2); color: var(--text);
+  border: 1.5px solid var(--border);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm {
+  width: auto; padding: 7px 16px; font-size: 12px; border-radius: 8px;
+}
+
+/* ── 진행 표시 ── */
+.progress-bar {
+  height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+  margin: 12px 0;
+}
+.progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 2px; transition: width .4s ease;
+  width: 0%;
+}
+.status-text {
+  font-size: 12px; color: var(--text2); text-align: center;
+  font-family: 'DM Mono', monospace; min-height: 18px;
+}
+
+/* ── 분석 결과 ── */
+.result-section { margin-top: 6px; }
+.result-block {
+  background: var(--surface2); border-radius: 10px;
+  border-left: 3px solid var(--accent);
+  padding: 14px 16px; margin-bottom: 12px;
+  font-size: 14px; line-height: 1.8; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+}
+.result-block.warn-block { border-left-color: var(--warn); }
+.result-block.bad-block  { border-left-color: var(--bad); }
+.result-block.good-block { border-left-color: var(--good); }
+
+.section-head {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; font-family: 'DM Mono', monospace;
+  margin: 16px 0 8px; color: var(--text2);
+}
+
+/* ── 기록 목록 ── */
+.record-item {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+  cursor: pointer; transition: all .2s;
+}
+.record-item:hover { border-color: var(--accent); }
+.record-date { font-size: 16px; font-weight: 700; color: var(--accent); }
+.record-meta { font-size: 11px; color: var(--text2); font-family:'DM Mono',monospace; margin-top: 3px; }
+.record-thumb-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.record-thumb {
+  width: 52px; height: 66px; border-radius: 6px;
+  object-fit: cover; border: 1px solid var(--border);
+}
+.record-actions { display: flex; gap: 8px; margin-top: 12px; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 20px;
+  font-size: 10px; font-family:'DM Mono',monospace; font-weight: 700;
+}
+.badge-good { background: rgba(104,211,145,.15); color: var(--good); border: 1px solid rgba(104,211,145,.3); }
+.badge-warn { background: rgba(246,173,85,.15); color: var(--warn); border: 1px solid rgba(246,173,85,.3); }
+.badge-bad  { background: rgba(252,129,129,.15); color: var(--bad);  border: 1px solid rgba(252,129,129,.3); }
+
+/* ── 비교 뷰 ── */
+.compare-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.compare-year {
+  font-size: 13px; font-family:'DM Mono',monospace; color: var(--text2);
+}
+.compare-year span { color: var(--accent); font-weight: 700; }
+.metric-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.metric-name { flex: 0 0 90px; font-size: 12px; color: var(--text2); }
+.metric-bars { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.metric-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.metric-bar {
+  height: 6px; border-radius: 3px; transition: width .6s ease;
+  min-width: 4px;
+}
+.bar-prev { background: var(--text3); }
+.bar-curr { background: var(--accent); }
+.metric-val { font-size: 11px; font-family:'DM Mono',monospace; min-width: 55px; text-align: right; }
+.metric-delta {
+  font-size: 11px; font-family:'DM Mono',monospace;
+  min-width: 44px; text-align: right;
+}
+.delta-up { color: var(--bad); }
+.delta-dn { color: var(--good); }
+.delta-eq { color: var(--text3); }
+
+/* ── 빈 화면 ── */
+.empty-state {
+  text-align: center; padding: 48px 20px; color: var(--text3);
+}
+.empty-icon { font-size: 48px; margin-bottom: 14px; opacity: .5; }
+.empty-text { font-size: 14px; line-height: 1.7; }
+
+/* ── 토스트 ── */
+.toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 10px 20px; border-radius: 30px;
+  font-size: 13px; color: var(--text); opacity: 0;
+  transition: all .3s; z-index: 9999; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── 카메라 ── */
+.camera-wrap { position: relative; margin-bottom: 10px; }
+#cameraVideo {
+  width: 100%; border-radius: 10px; display: none;
+  background: #000; object-fit: contain;
+}
+.camera-btns { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+
+/* ── 탭 패널 ── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── 스크롤바 ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── AI 제공자 선택 버튼 ── */
+.provider-btn {
+  flex: 1; min-width: 80px; padding: 10px 8px;
+  border-radius: 10px; border: 1.5px solid var(--border);
+  background: var(--surface2); color: var(--text2);
+  font-size: 13px; font-family: 'Noto Serif KR', serif;
+  cursor: pointer; transition: all .2s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.provider-btn:hover { border-color: var(--accent); color: var(--accent); }
+.provider-btn.active {
+  background: rgba(79,209,197,.12);
+  border-color: var(--accent); color: var(--accent);
+  font-weight: 700;
+}
+.provider-icon { font-size: 15px; }
+</style>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="건강검진 분석기2">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#7c3aed">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <script>
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>{
+        navigator.serviceWorker.register('./service-worker.js');
+      });
+    }
+    window.addEventListener('beforeinstallprompt',e=>{
+      e.preventDefault();
+      window._pwaE=e;
+      var b=document.createElement('div');
+      b.style='position:fixed;bottom:0;left:0;right:0;background:#7c3aed;color:#fff;padding:18px;text-align:center;z-index:9999;font-size:15px;font-weight:bold;cursor:pointer;font-family:sans-serif;';
+      b.innerHTML='📲 홈화면에 앱 추가하기 · Add to Home Screen';
+      b.onclick=async function(){window._pwaE.prompt();var r=await window._pwaE.userChoice;if(r.outcome==='accepted')b.remove();};
+      document.body.appendChild(b);
+    });
+  </script>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-icon">🩺</div>
+    <div>
+      <div class="header-title">건강검진 AI 분석기</div>
+      <div class="header-sub">Gemini · Claude · Groq · 연도별 추세 분석</div>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('analyze')">📷 분석</button>
+  <button class="tab" onclick="switchTab('records')">📂 기록</button>
+  <button class="tab" onclick="switchTab('compare')">📊 비교</button>
+  <button class="tab" onclick="switchTab('settings')">⚙️ 설정</button>
+</div>
+
+<!-- ═══ 분석 탭 ═══ -->
+<div class="main">
+<div id="tab-analyze" class="tab-panel active">
+
+  <!-- 검진일 -->
+  <div class="card">
+    <div class="card-title">검진일 입력</div>
+    <input type="date" class="date-input" id="examDate">
+  </div>
+
+  <!-- 사진 업로드 -->
+  <div class="card">
+    <div class="card-title">검진 결과지 사진</div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="handleDrop(event)">
+      <div class="upload-icon">📄</div>
+      <div class="upload-text">사진을 탭하여 선택하거나<br>카메라로 직접 촬영하세요</div>
+      <div class="upload-hint">JPG · PNG · WEBP · 여러 장 가능</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+
+    <div class="camera-wrap" style="margin-top:10px;">
+      <video id="cameraVideo" autoplay playsinline></video>
+      <div class="camera-btns">
+        <button class="btn btn-secondary btn-sm" onclick="startCamera()" id="camStartBtn">📷 카메라 켜기</button>
+        <button class="btn btn-secondary btn-sm" onclick="stopCamera()" id="camStopBtn" style="display:none">✕ 끄기</button>
+        <button class="btn btn-primary btn-sm" onclick="capturePhoto()" id="camCaptureBtn" style="display:none">📸 촬영</button>
+      </div>
+    </div>
+
+    <div class="preview-grid" id="previewGrid"></div>
+  </div>
+
+  <!-- 분석 버튼 -->
+  <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalysis()" disabled>
+    🔬 AI 분석 시작
+  </button>
+
+  <div class="progress-bar" id="progressBar" style="display:none">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+  <div class="status-text" id="statusText"></div>
+
+  <!-- 결과 -->
+  <div id="resultArea" class="result-section" style="margin-top:16px;"></div>
+
+  <!-- 저장 버튼 (분석 후 표시) -->
+  <button class="btn btn-secondary" id="saveBtn" onclick="saveRecord()" style="display:none; margin-top:10px;">
+    💾 이 결과 저장하기
+  </button>
+
+</div>
+
+<!-- ═══ 기록 탭 ═══ -->
+<div id="tab-records" class="tab-panel">
+  <div id="recordsList"></div>
+</div>
+
+<!-- ═══ 비교 탭 ═══ -->
+<div id="tab-compare" class="tab-panel">
+  <div class="card">
+    <div class="card-title">연도 비교</div>
+    <div style="display:flex; gap:8px; margin-bottom:14px;">
+      <select id="yearA" class="date-input" style="flex:1; font-size:13px; padding:9px 10px;" onchange="renderCompare()">
+        <option value="">이전 연도</option>
+      </select>
+      <select id="yearB" class="date-input" style="flex:1; font-size:13px; padding:9px 10px;" onchange="renderCompare()">
+        <option value="">최근 연도</option>
+      </select>
+    </div>
+    <div id="compareResult"></div>
+  </div>
+</div>
+
+<!-- ═══ 설정 탭 ═══ -->
+<div id="tab-settings" class="tab-panel">
+
+  <!-- AI 제공자 선택 -->
+  <div class="card">
+    <div class="card-title">AI 제공자 선택</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;" id="providerBtns">
+      <button class="provider-btn active" id="pBtn-gemini" onclick="selectProvider('gemini')">
+        <span class="provider-icon">✨</span> Gemini
+      </button>
+      <button class="provider-btn" id="pBtn-claude" onclick="selectProvider('claude')">
+        <span class="provider-icon">🤖</span> Claude
+      </button>
+      <button class="provider-btn" id="pBtn-groq" onclick="selectProvider('groq')">
+        <span class="provider-icon">⚡</span> Groq
+      </button>
+    </div>
+    <p style="font-size:11px; color:var(--text3); margin-top:10px; line-height:1.6; font-family:'DM Mono',monospace;" id="providerDesc">
+      Google Gemini 1.5 Flash — 이미지 분석에 최적화. 무료 티어 사용 가능.
+    </p>
+  </div>
+
+  <!-- Gemini API 키 -->
+  <div class="card" id="section-gemini">
+    <div class="card-title">Gemini API 키</div>
+    <div id="apiKeyRows"></div>
+    <button class="btn btn-secondary btn-sm" onclick="addApiKeyRow()" style="margin-top:8px;">+ 키 추가 (할당량 초과 시 자동 전환)</button>
+    <button class="btn btn-primary" style="margin-top:12px;" onclick="saveApiKeys()">저장</button>
+
+    <!-- 모델 폴백 체인 안내 -->
+    <div style="margin-top:14px; background:var(--surface2); border-radius:10px; padding:12px 14px; border:1px solid var(--border);">
+      <div style="font-size:11px; font-weight:700; color:var(--accent); font-family:'DM Mono',monospace; margin-bottom:8px; letter-spacing:.5px;">⚡ 자동 모델 폴백 순서</div>
+      <div id="modelFallbackChain" style="display:flex; flex-direction:column; gap:5px;"></div>
+      <p style="font-size:10px; color:var(--text3); margin-top:8px; line-height:1.5; font-family:'DM Mono',monospace;">
+        할당량 소진 시 자동으로 다음 모델로 전환됩니다.<br>
+        Flash-Lite: 1,000회/일 · Flash: 500회/일 (무료 기준)
+      </p>
+    </div>
+
+    <p style="font-size:11px; color:var(--text3); margin-top:10px; line-height:1.6; font-family:'DM Mono',monospace;">
+      ※ <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent);">Google AI Studio</a>에서 발급<br>
+      ※ 키 할당량 소진 시 다음 키로도 자동 전환됩니다.
+    </p>
+  </div>
+
+  <!-- Claude API 키 -->
+  <div class="card" id="section-claude" style="display:none;">
+    <div class="card-title">Claude API 키</div>
+    <div class="api-row">
+      <span class="api-label">API 키</span>
+      <input class="api-input" type="password" id="claudeApiKey"
+        value="" placeholder="sk-ant-...">
+      <div class="api-status" id="claudeApiDot"></div>
+    </div>
+    <div class="api-row" style="margin-top:8px; align-items:center;">
+      <span class="api-label">모델</span>
+      <select class="api-input" id="claudeModel" style="cursor:pointer;">
+        <option value="claude-opus-4-5">claude-opus-4-5 (최고 성능)</option>
+        <option value="claude-sonnet-4-5" selected>claude-sonnet-4-5 (권장)</option>
+        <option value="claude-haiku-4-5">claude-haiku-4-5 (빠름)</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="margin-top:12px;" onclick="saveClaudeKey()">저장</button>
+    <p style="font-size:11px; color:var(--text3); margin-top:10px; line-height:1.6; font-family:'DM Mono',monospace;">
+      ※ <a href="https://console.anthropic.com/keys" target="_blank" style="color:var(--accent);">Anthropic Console</a>에서 발급<br>
+      ※ 이미지 분석 지원 (claude-sonnet 이상 권장)
+    </p>
+  </div>
+
+  <!-- Groq API 키 -->
+  <div class="card" id="section-groq" style="display:none;">
+    <div class="card-title">Groq API 키</div>
+    <div class="api-row">
+      <span class="api-label">API 키</span>
+      <input class="api-input" type="password" id="groqApiKey"
+        value="" placeholder="gsk_...">
+      <div class="api-status" id="groqApiDot"></div>
+    </div>
+    <div class="api-row" style="margin-top:8px; align-items:center;">
+      <span class="api-label">모델</span>
+      <select class="api-input" id="groqModel" style="cursor:pointer;">
+        <option value="meta-llama/llama-4-scout-17b-16e-instruct" selected>Llama 4 Scout (이미지, 권장)</option>
+        <option value="meta-llama/llama-4-maverick-17b-128e-instruct">Llama 4 Maverick (이미지)</option>
+        <option value="llama-3.3-70b-versatile">Llama 3.3 70B (텍스트)</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="margin-top:12px;" onclick="saveGroqKey()">저장</button>
+    <p style="font-size:11px; color:var(--text3); margin-top:10px; line-height:1.6; font-family:'DM Mono',monospace;">
+      ※ <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent);">Groq Console</a>에서 발급<br>
+      ※ 초고속 추론 · 무료 티어 사용 가능
+    </p>
+  </div>
+  <div class="card">
+    <div class="card-title">데이터 관리</div>
+    <button class="btn btn-secondary" onclick="exportData()" style="margin-bottom:8px;">📤 전체 데이터 내보내기</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('importInput').click()">📥 데이터 가져오기</button>
+    <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(this)">
+    <button class="btn" style="background:rgba(252,129,129,.1); color:var(--bad); border:1px solid rgba(252,129,129,.3); margin-top:8px;" onclick="clearAllData()">🗑️ 전체 삭제</button>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+// 상태
+// ══════════════════════════════════════
+let uploadedImages = [];  // {file, dataUrl, base64, mimeType}
+let analysisResult = null;
+let cameraStream = null;
+let currentApiKeyIndex = 0;
+
+// ── localStorage 유틸 ──
+function load(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+// ── AI 제공자 ──
+let activeProvider = load('hc_provider', 'gemini'); // gemini | claude | groq
+
+// ── Gemini API 키 ──
+let apiKeys = load('hc_apiKeys', ['', '']);
+let apiKeyStatus = apiKeys.map(() => 'idle'); // idle | active | used | error
+
+// ── Claude API 키 ──
+let claudeApiKey = load('hc_claudeApiKey', '');
+let claudeModel  = load('hc_claudeModel', 'claude-sonnet-4-5');
+
+// ── Groq API 키 ──
+let groqApiKey = load('hc_groqApiKey', '');
+let groqModel  = load('hc_groqModel', 'meta-llama/llama-4-scout-17b-16e-instruct');
+
+function getActiveApiKey() {
+  for (let i = 0; i < apiKeys.length; i++) {
+    if (apiKeys[i] && apiKeyStatus[i] !== 'used' && apiKeyStatus[i] !== 'error') {
+      currentApiKeyIndex = i;
+      return apiKeys[i];
+    }
+  }
+  return null;
+}
+
+// ── 제공자 선택 ──
+const providerDescMap = {
+  gemini: 'Google Gemini — Flash-Lite(1,000/일) → Flash(500/일) → Flash-8B 순 자동 폴백. 무료 티어 사용 가능.',
+  claude: 'Anthropic Claude — 정교한 의료 텍스트 분석. 이미지 지원 (Sonnet 이상).',
+  groq:   'Groq — 초고속 추론 엔진. Llama 4 기반 이미지/텍스트 분석. 무료 티어 사용 가능.'
+};
+
+function selectProvider(name, persist = true) {
+  activeProvider = name;
+  if (persist) save('hc_provider', name);
+
+  // 버튼 활성화
+  ['gemini','claude','groq'].forEach(p => {
+    const btn = document.getElementById('pBtn-' + p);
+    if (btn) btn.classList.toggle('active', p === name);
+  });
+
+  // 섹션 표시
+  ['gemini','claude','groq'].forEach(p => {
+    const sec = document.getElementById('section-' + p);
+    if (sec) sec.style.display = (p === name) ? '' : 'none';
+  });
+
+  // 설명 업데이트
+  const desc = document.getElementById('providerDesc');
+  if (desc) desc.textContent = providerDescMap[name] || '';
+}
+
+function markApiKeyUsed() {
+  apiKeyStatus[currentApiKeyIndex] = 'used';
+  renderApiStatusDots();
+}
+function markApiKeyError() {
+  apiKeyStatus[currentApiKeyIndex] = 'error';
+  renderApiStatusDots();
+}
+
+function saveClaudeKey() {
+  claudeApiKey = document.getElementById('claudeApiKey').value.trim();
+  claudeModel  = document.getElementById('claudeModel').value;
+  save('hc_claudeApiKey', claudeApiKey);
+  save('hc_claudeModel', claudeModel);
+  const dot = document.getElementById('claudeApiDot');
+  if (dot) { dot.className = 'api-status'; if (claudeApiKey) dot.classList.add('active'); }
+  showToast('Claude API 키가 저장됐어요!');
+}
+
+function saveGroqKey() {
+  groqApiKey = document.getElementById('groqApiKey').value.trim();
+  groqModel  = document.getElementById('groqModel').value;
+  save('hc_groqApiKey', groqApiKey);
+  save('hc_groqModel', groqModel);
+  const dot = document.getElementById('groqApiDot');
+  if (dot) { dot.className = 'api-status'; if (groqApiKey) dot.classList.add('active'); }
+  showToast('Groq API 키가 저장됐어요!');
+}
+
+// ═══ 초기화 ═══
+window.onload = () => {
+  // 오늘 날짜 기본값
+  document.getElementById('examDate').value = new Date().toISOString().slice(0,10);
+  renderApiKeyRows();
+  renderApiStatusDots();
+  renderModelFallbackChain();
+  // Claude / Groq 키 복원
+  document.getElementById('claudeApiKey').value = claudeApiKey;
+  document.getElementById('claudeModel').value   = claudeModel;
+  document.getElementById('groqApiKey').value    = groqApiKey;
+  document.getElementById('groqModel').value     = groqModel;
+  // 제공자 UI 복원
+  selectProvider(activeProvider, false);
+};
+
+// ══════════════════════════════════════
+// 탭
+// ══════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['analyze','records','compare','settings'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'records') renderRecords();
+  if (name === 'compare') renderCompareSelects();
+  if (name === 'settings') { renderApiKeyRows(); renderModelFallbackChain(); }
+}
+
+// ══════════════════════════════════════
+// 사진 처리
+// ══════════════════════════════════════
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+}
+
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      const base64 = dataUrl.split(',')[1];
+      uploadedImages.push({ file, dataUrl, base64, mimeType: file.type });
+      renderPreviews();
+      updateAnalyzeBtn();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPreviews() {
+  const grid = document.getElementById('previewGrid');
+  grid.innerHTML = uploadedImages.map((img, i) => `
+    <div class="preview-item">
+      <img src="${img.dataUrl}" alt="검진사진${i+1}">
+      <button class="preview-remove" onclick="removeImage(${i})">✕</button>
+      <div class="preview-num">${i+1}</div>
+    </div>
+  `).join('');
+}
+
+function removeImage(idx) {
+  uploadedImages.splice(idx, 1);
+  renderPreviews();
+  updateAnalyzeBtn();
+}
+
+function updateAnalyzeBtn() {
+  document.getElementById('analyzeBtn').disabled = uploadedImages.length === 0;
+}
+
+// ══════════════════════════════════════
+// 카메라
+// ══════════════════════════════════════
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 } }
+    });
+    const video = document.getElementById('cameraVideo');
+    video.srcObject = cameraStream;
+    video.style.display = 'block';
+    video.onloadedmetadata = () => {
+      video.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+    };
+    document.getElementById('camStartBtn').style.display = 'none';
+    document.getElementById('camCaptureBtn').style.display = 'inline-flex';
+    document.getElementById('camStopBtn').style.display = 'inline-flex';
+  } catch (e) {
+    showToast('카메라 권한이 필요합니다. 브라우저 설정에서 허용해주세요.');
+  }
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(blob => {
+    const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+    handleFiles([file]);
+    showToast('사진이 추가됐어요!');
+  }, 'image/jpeg', 0.92);
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  const video = document.getElementById('cameraVideo');
+  video.style.display = 'none';
+  document.getElementById('camStartBtn').style.display = 'inline-flex';
+  document.getElementById('camCaptureBtn').style.display = 'none';
+  document.getElementById('camStopBtn').style.display = 'none';
+}
+
+// ══════════════════════════════════════
+// Gemini API 호출 (모델 폴백 체인)
+// ══════════════════════════════════════
+
+// 무료 티어 기준 저렴한 순서 (Flash-Lite: 1000/일, Flash: 500/일)
+const GEMINI_MODEL_CHAIN = [
+  { id: 'gemini-2.5-flash-lite', label: 'Flash-Lite', quota: '1,000/일' },
+  { id: 'gemini-2.5-flash',      label: 'Flash',      quota: '500/일'   },
+  { id: 'gemini-2.5-flash-8b',   label: 'Flash-8B',   quota: '500/일'   },
+  { id: 'gemini-1.5-flash-8b',   label: '1.5 Flash-8B', quota: '1,000/일' },
+];
+
+// 현재 사용 중인 모델 인덱스 (키별)
+let geminiModelIdx = {}; // apiKeyIndex → modelIdx
+
+function getCurrentGeminiModel(keyIdx) {
+  if (geminiModelIdx[keyIdx] === undefined) geminiModelIdx[keyIdx] = 0;
+  return GEMINI_MODEL_CHAIN[geminiModelIdx[keyIdx]] || GEMINI_MODEL_CHAIN[0];
+}
+
+function advanceGeminiModel(keyIdx) {
+  if (geminiModelIdx[keyIdx] === undefined) geminiModelIdx[keyIdx] = 0;
+  geminiModelIdx[keyIdx]++;
+  if (geminiModelIdx[keyIdx] >= GEMINI_MODEL_CHAIN.length) {
+    // 이 키의 모든 모델 소진 → 키 자체를 소진 처리
+    return false;
+  }
+  return true;
+}
+
+function renderModelFallbackChain() {
+  const el = document.getElementById('modelFallbackChain');
+  if (!el) return;
+  el.innerHTML = GEMINI_MODEL_CHAIN.map((m, i) => {
+    const usedKeys = Object.entries(geminiModelIdx).filter(([k, v]) => v > i);
+    const allExhausted = usedKeys.length >= apiKeys.filter(k => k).length && apiKeys.filter(k=>k).length > 0;
+    const isCurrent = Object.values(geminiModelIdx).some(v => v === i) ||
+                      (i === 0 && Object.keys(geminiModelIdx).length === 0);
+    const color = allExhausted ? 'var(--bad)' : isCurrent ? 'var(--accent)' : 'var(--text3)';
+    const icon = allExhausted ? '✕' : isCurrent ? '▶' : '○';
+    return `<div style="display:flex; align-items:center; gap:8px; font-size:11px; font-family:'DM Mono',monospace; color:${color};">
+      <span style="width:12px; text-align:center;">${icon}</span>
+      <span style="flex:1;">${m.label}</span>
+      <span style="opacity:.6;">${m.quota}</span>
+    </div>`;
+  }).join('');
+}
+
+async function callGemini(prompt, images, _depth = 0) {
+  if (_depth > GEMINI_MODEL_CHAIN.length * (apiKeys.filter(k=>k).length || 1) + 2) {
+    throw new Error('모든 Gemini 모델과 API 키의 할당량이 소진됐습니다. 내일 다시 시도하거나 다른 AI 제공자를 사용해주세요.');
+  }
+
+  const apiKey = getActiveApiKey();
+  if (!apiKey) throw new Error('사용 가능한 API 키가 없습니다. 설정 탭에서 API 키를 입력해주세요.');
+
+  const model = getCurrentGeminiModel(currentApiKeyIndex);
+
+  const parts = [{ text: prompt }];
+  images.forEach(img => {
+    parts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } });
+  });
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=${apiKey}`;
+  const body = {
+    contents: [{ parts }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
+  };
+
+  // 상태 텍스트에 현재 모델 표시
+  const statusEl = document.getElementById('statusText');
+  if (statusEl) statusEl.textContent = `${model.label} 모델로 분석 중...`;
+
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch (e) {
+    markApiKeyError();
+    throw new Error('네트워크 오류: ' + e.message);
+  }
+
+  // 할당량 초과 → 다음 모델로 폴백
+  if (resp.status === 429 || resp.status === 403) {
+    const canAdvance = advanceGeminiModel(currentApiKeyIndex);
+    renderModelFallbackChain();
+    if (!canAdvance) {
+      // 이 키의 모든 모델 소진 → 다음 키로
+      markApiKeyUsed();
+      geminiModelIdx = {}; // 새 키에선 처음 모델부터
+    }
+    return callGemini(prompt, images, _depth + 1);
+  }
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    const msg = err?.error?.message || `API 오류 (${resp.status})`;
+    if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429')) {
+      const canAdvance = advanceGeminiModel(currentApiKeyIndex);
+      renderModelFallbackChain();
+      if (!canAdvance) {
+        markApiKeyUsed();
+        geminiModelIdx = {};
+      }
+      return callGemini(prompt, images, _depth + 1);
+    }
+    markApiKeyError();
+    throw new Error(`[${model.label}] ${msg}`);
+  }
+
+  renderModelFallbackChain();
+  const data = await resp.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '분석 결과를 읽지 못했습니다.';
+}
+
+// ══════════════════════════════════════
+// Claude API 호출
+// ══════════════════════════════════════
+async function callClaude(prompt, images) {
+  if (!claudeApiKey) throw new Error('Claude API 키가 없습니다. 설정 탭에서 입력해주세요.');
+
+  const contentParts = [];
+  // 이미지 첨부
+  images.forEach(img => {
+    contentParts.push({
+      type: 'image',
+      source: { type: 'base64', media_type: img.mimeType, data: img.base64 }
+    });
+  });
+  contentParts.push({ type: 'text', text: prompt });
+
+  let resp;
+  try {
+    resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': claudeApiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: claudeModel,
+        max_tokens: 8192,
+        messages: [{ role: 'user', content: contentParts }]
+      })
+    });
+  } catch (e) {
+    throw new Error('네트워크 오류: ' + e.message);
+  }
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Claude API 오류 (${resp.status})`);
+  }
+
+  const data = await resp.json();
+  return data.content?.[0]?.text || '분석 결과를 읽지 못했습니다.';
+}
+
+// ══════════════════════════════════════
+// Groq API 호출
+// ══════════════════════════════════════
+async function callGroq(prompt, images) {
+  if (!groqApiKey) throw new Error('Groq API 키가 없습니다. 설정 탭에서 입력해주세요.');
+
+  const isVisionModel = groqModel.includes('llama-4');
+  const userContent = isVisionModel
+    ? [
+        ...images.map(img => ({
+          type: 'image_url',
+          image_url: { url: `data:${img.mimeType};base64,${img.base64}` }
+        })),
+        { type: 'text', text: prompt }
+      ]
+    : prompt; // 텍스트 전용 모델
+
+  let resp;
+  try {
+    resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqApiKey}`
+      },
+      body: JSON.stringify({
+        model: groqModel,
+        max_tokens: 8192,
+        temperature: 0.2,
+        messages: [{ role: 'user', content: userContent }]
+      })
+    });
+  } catch (e) {
+    throw new Error('네트워크 오류: ' + e.message);
+  }
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Groq API 오류 (${resp.status})`);
+  }
+
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content || '분석 결과를 읽지 못했습니다.';
+}
+
+// ══════════════════════════════════════
+// 분석
+// ══════════════════════════════════════
+async function startAnalysis() {
+  const date = document.getElementById('examDate').value;
+  if (!date) { showToast('검진일을 먼저 입력해주세요.'); return; }
+  if (uploadedImages.length === 0) { showToast('사진을 먼저 추가해주세요.'); return; }
+
+  // 제공자별 키 확인
+  if (activeProvider === 'gemini') {
+    if (!getActiveApiKey()) { showToast('설정 탭에서 Gemini API 키를 입력해주세요.', 3000); switchTab('settings'); return; }
+  } else if (activeProvider === 'claude') {
+    if (!claudeApiKey) { showToast('설정 탭에서 Claude API 키를 입력해주세요.', 3000); switchTab('settings'); return; }
+  } else if (activeProvider === 'groq') {
+    if (!groqApiKey) { showToast('설정 탭에서 Groq API 키를 입력해주세요.', 3000); switchTab('settings'); return; }
+  }
+
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('progressBar').style.display = 'block';
+  document.getElementById('saveBtn').style.display = 'none';
+  document.getElementById('resultArea').innerHTML = '';
+
+  setProgress(10, '이미지 준비 중...');
+
+  const records = load('hc_records', []);
+  const prevRecord = records.length > 0 ? records[records.length - 1] : null;
+
+  const providerLabels = { gemini: 'Gemini AI', claude: 'Claude AI', groq: 'Groq AI' };
+  setProgress(25, `${providerLabels[activeProvider]}에 분석 요청 중...`);
+
+  const prompt = buildPrompt(date, prevRecord);
+
+  try {
+    setProgress(40, `${providerLabels[activeProvider]}로 분석 중...`);
+
+    let rawResult;
+    if (activeProvider === 'gemini') {
+      rawResult = await callGemini(prompt, uploadedImages);
+    } else if (activeProvider === 'claude') {
+      rawResult = await callClaude(prompt, uploadedImages);
+    } else if (activeProvider === 'groq') {
+      rawResult = await callGroq(prompt, uploadedImages);
+    }
+
+    setProgress(85, '결과 정리 중...');
+
+    analysisResult = {
+      date,
+      rawText: rawResult,
+      images: uploadedImages.map(i => i.dataUrl),
+      provider: activeProvider,
+      createdAt: new Date().toISOString()
+    };
+
+    renderResult(rawResult, prevRecord);
+    setProgress(100, '분석 완료!');
+    document.getElementById('saveBtn').style.display = 'block';
+
+    setTimeout(() => {
+      document.getElementById('progressBar').style.display = 'none';
+      setProgress(0, '');
+    }, 1200);
+
+  } catch (e) {
+    setProgress(0, '');
+    document.getElementById('progressBar').style.display = 'none';
+    document.getElementById('resultArea').innerHTML = `
+      <div class="result-block bad-block">❌ 오류: ${e.message}</div>
+    `;
+    showToast('분석 실패: ' + e.message, 4000);
+  }
+
+  document.getElementById('analyzeBtn').disabled = false;
+}
+
+function buildPrompt(date, prevRecord) {
+  let prompt = `당신은 내과·가정의학과 전문의 수준의 의료 AI입니다.
+건강검진 결과지 사진을 보고, 단순한 정상/비정상 판정을 넘어서 실제 병원 전문의가 환자에게 설명하듯 매우 상세하고 구체적으로 분석해주세요.
+전문 용어는 반드시 쉬운 말로 풀어서 설명하고, 수치 하나하나에 의미와 맥락을 부여해주세요.
+
+검진일: ${date}
+
+---
+
+## 📋 전체 검사 수치 정리
+모든 검사 항목을 빠짐없이 아래 형식 표로 정리하세요.
+항목명 | 결과값 | 단위 | 정상 참고치 | 판정(정상/주의/경계/위험)
+
+---
+
+## 🩺 종합 건강 소견 (의사 소견서 형식)
+전문의가 직접 작성하는 소견서처럼 서술하세요.
+- 이 사람의 전반적인 건강 상태를 한 문단으로 요약
+- 가장 주목해야 할 건강 이슈 2~3가지를 우선순위 순으로 설명
+- 각 이슈가 왜 중요한지, 지금 당장 위험한지 아니면 관리가 필요한 수준인지 명확히 기술
+- 검사 항목들 간의 연관성 분석 (예: 혈당+중성지방+허리둘레가 동시에 높으면 대사증후군 가능성 등)
+
+---
+
+## ⚠️ 이상 항목 심층 분석
+정상 범위를 벗어난 항목마다 아래 내용을 빠짐없이 서술하세요:
+
+**[항목명]: 결과값 (정상범위: XX~XX)**
+1. 이 수치가 의미하는 것: (신체에서 무슨 일이 일어나고 있는지)
+2. 이 수치가 나온 주요 원인들: (식습관, 생활습관, 유전, 스트레스 등 구체적으로)
+3. 방치했을 때 발생 가능한 합병증 또는 질환: (단계별로 설명)
+4. 이 수치를 정상으로 되돌리기 위한 구체적 방법:
+   - 식이: (먹어야 할 것, 피해야 할 것, 양 포함)
+   - 운동: (종류, 강도, 시간, 횟수 구체적으로)
+   - 생활습관: (수면, 음주, 흡연, 스트레스 관리 등)
+   - 약물치료 필요 여부: (어느 수준이면 병원 상담이 필요한지)
+5. 목표 수치와 개선 기간 예상:
+
+---
+
+## ✅ 정상 항목 상세 설명
+정상 수치도 단순히 "정상"이라고만 하지 말고, 각 항목이 신체에서 어떤 역할을 하는지, 왜 이 범위가 건강한 것인지 설명해주세요. 특히 잘 관리되고 있는 항목은 칭찬과 함께 유지 방법도 알려주세요.
+
+---
+
+## 🧬 항목 간 연관성 분석 (패턴 진단)
+수치들을 종합해서 특정 질환 패턴이 보이는지 분석하세요:
+- 대사증후군 가능성 (혈압+혈당+중성지방+허리둘레+HDL 복합 판단)
+- 심혈관 질환 위험도 (10년 내 심혈관 사건 위험 수준)
+- 당뇨 전단계 또는 당뇨 가능성
+- 간 기능 이상 패턴 (지방간, 알코올성 간질환 등)
+- 신장 기능 상태
+- 그 외 눈에 띄는 패턴
+
+---
+
+## 💊 병원 추가 검사 권고
+이 검진 결과를 바탕으로 추가로 받으면 좋을 검사들을 알려주세요:
+- 어떤 검사를, 왜, 얼마나 급하게 받아야 하는지
+- 어느 진료과를 방문해야 하는지
+
+---
+
+## 🥗 맞춤 생활습관 처방 (이 사람의 수치에 특화)
+일반적인 권고가 아닌, 이 사람의 구체적인 수치에 맞춘 처방을 내려주세요:
+
+**식단 처방**
+- 하루 권장 칼로리
+- 탄수화물/단백질/지방 비율
+- 먹어야 할 음식 (구체적 식품명과 양)
+- 반드시 줄여야 할 음식 (이유 포함)
+- 금식/제한해야 할 음식
+
+**운동 처방**
+- 유산소 운동: 종류, 강도(최대심박수 %), 시간, 주 횟수
+- 근력 운동: 부위, 세트, 반복수, 주 횟수
+- 피해야 할 운동 (수치가 너무 높아 위험한 경우)
+
+**기타 생활 처방**
+- 수면 목표 시간 및 수면의 질 개선법
+- 음주 가능 여부 및 허용 기준
+- 스트레스 관리법
+- 다음 검진 권장 시기
+
+---
+
+## 📊 JSON 수치 데이터
+이 섹션은 반드시 순수 JSON만 출력하세요 (설명 없이):
+\`\`\`json
+{
+  "혈압_수축기": 숫자또는null,
+  "혈압_이완기": 숫자또는null,
+  "공복혈당": 숫자또는null,
+  "당화혈색소": 숫자또는null,
+  "총콜레스테롤": 숫자또는null,
+  "HDL콜레스테롤": 숫자또는null,
+  "LDL콜레스테롤": 숫자또는null,
+  "중성지방": 숫자또는null,
+  "ALT": 숫자또는null,
+  "AST": 숫자또는null,
+  "감마GT": 숫자또는null,
+  "크레아티닌": 숫자또는null,
+  "eGFR": 숫자또는null,
+  "요산": 숫자또는null,
+  "체중": 숫자또는null,
+  "BMI": 숫자또는null,
+  "허리둘레": 숫자또는null,
+  "혈색소": 숫자또는null,
+  "백혈구": 숫자또는null
+}
+\`\`\`
+`;
+
+  if (prevRecord) {
+    prompt += `
+---
+
+## 📈 전년 대비 심층 변화 분석
+이전 검진일: ${prevRecord.date}
+이전 수치: ${JSON.stringify(prevRecord.metrics || {})}
+
+단순 수치 비교를 넘어서 다음을 분석해주세요:
+1. 각 수치의 변화량과 변화율 (% 계산 포함)
+2. 변화 방향의 의미: 좋아진 것인지 나빠진 것인지, 왜 그렇게 판단하는지
+3. 추세가 걱정되는 항목: 아직 정상이지만 계속 이 방향이면 언제 이상 범위에 진입할지 예측
+4. 가장 개선된 항목 칭찬 및 유지 전략
+5. 가장 악화된 항목에 대한 긴급 경고 및 즉각 조치 방안
+6. 1년 사이 이 변화가 나타난 가능한 원인 분석 (계절, 나이, 생활습관 변화 등)
+7. 향후 1년 목표 수치 설정`;
+  }
+
+  return prompt;
+}
+
+function renderResult(text, prevRecord) {
+  const area = document.getElementById('resultArea');
+
+  // 섹션별로 파싱
+  const sections = text.split(/^## /m).filter(Boolean);
+  let html = '';
+
+  sections.forEach(sec => {
+    const lines = sec.trim().split('\n');
+    const title = lines[0].replace(/^#+\s*/, '').trim();
+    const body = lines.slice(1).join('\n').trim();
+
+    if (title.includes('JSON') || title.includes('json')) return; // JSON 블록은 숨김
+
+    let cls = 'result-block';
+    if (title.includes('주의')) cls += ' warn-block';
+    if (title.includes('오류') || title.includes('❌')) cls += ' bad-block';
+    if (title.includes('양호') || title.includes('✅')) cls += ' good-block';
+
+    // 표 형식 처리
+    const tableBody = body.replace(/^\|(.+)\|$/gm, (match, inner) => {
+      const cells = inner.split('|').map(c => c.trim());
+      const isSep = cells.every(c => /^[-:]+$/.test(c));
+      if (isSep) return '';
+      return '<tr>' + cells.map(c => `<td style="padding:4px 8px; border-bottom:1px solid var(--border); font-size:12px;">${c}</td>`).join('') + '</tr>';
+    });
+
+    const hasTable = tableBody.includes('<tr>');
+    const finalBody = hasTable
+      ? `<table style="width:100%; border-collapse:collapse; margin-top:6px;">${tableBody}</table>`
+      : body;
+
+    html += `
+      <div class="section-head">${title}</div>
+      <div class="${cls}">${finalBody}</div>
+    `;
+  });
+
+  area.innerHTML = html;
+
+  // JSON 추출하여 저장용으로 보관
+  const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    try {
+      analysisResult.metrics = JSON.parse(jsonMatch[1]);
+    } catch {}
+  }
+}
+
+function setProgress(pct, msg) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('statusText').textContent = msg;
+}
+
+// ══════════════════════════════════════
+// 저장
+// ══════════════════════════════════════
+function saveRecord() {
+  if (!analysisResult) return;
+  const records = load('hc_records', []);
+
+  // 같은 날짜 덮어쓰기
+  const idx = records.findIndex(r => r.date === analysisResult.date);
+  if (idx >= 0) {
+    if (!confirm(`${analysisResult.date} 기록이 이미 있어요. 덮어쓸까요?`)) return;
+    records[idx] = analysisResult;
+  } else {
+    records.push(analysisResult);
+  }
+  records.sort((a,b) => a.date.localeCompare(b.date));
+  save('hc_records', records);
+
+  showToast('💾 저장됐어요!');
+  document.getElementById('saveBtn').style.display = 'none';
+}
+
+// ══════════════════════════════════════
+// 기록 탭
+// ══════════════════════════════════════
+function renderRecords() {
+  const records = load('hc_records', []);
+  const el = document.getElementById('recordsList');
+  if (records.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <div class="empty-text">저장된 기록이 없어요.<br>검진 결과를 분석하고 저장해보세요.</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = [...records].reverse().map((r, i) => {
+    const idx = records.length - 1 - i;
+    const thumbs = (r.images || []).slice(0,4).map(img => `<img src="${img}" class="record-thumb">`).join('');
+    const metrics = r.metrics || {};
+    const hasMetrics = Object.keys(metrics).length > 0;
+    return `
+      <div class="record-item">
+        <div style="display:flex; justify-content:space-between; align-items:start;">
+          <div>
+            <div class="record-date">📅 ${r.date}</div>
+            <div class="record-meta">${new Date(r.createdAt).toLocaleString('ko-KR')} 저장${r.provider ? ` · ${r.provider.toUpperCase()}` : ''}</div>
+          </div>
+          ${hasMetrics ? `<span class="badge badge-good">수치 있음</span>` : ''}
+        </div>
+        ${thumbs ? `<div class="record-thumb-row">${thumbs}</div>` : ''}
+        <div class="record-actions">
+          <button class="btn btn-secondary btn-sm" onclick="viewRecord(${idx})">📋 결과 보기</button>
+          <button class="btn btn-sm" style="background:rgba(252,129,129,.1);color:var(--bad);border:1px solid rgba(252,129,129,.3);" onclick="deleteRecord(${idx})">🗑️ 삭제</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function viewRecord(idx) {
+  const records = load('hc_records', []);
+  const r = records[idx];
+  if (!r) return;
+  switchTab('analyze');
+  document.getElementById('examDate').value = r.date;
+  document.getElementById('resultArea').innerHTML = '';
+  analysisResult = r;
+  // 이전 결과 재표시
+  renderResult(r.rawText, null);
+  document.getElementById('saveBtn').style.display = 'none';
+  window.scrollTo(0, 0);
+}
+
+function deleteRecord(idx) {
+  if (!confirm('이 기록을 삭제할까요?')) return;
+  const records = load('hc_records', []);
+  records.splice(idx, 1);
+  save('hc_records', records);
+  renderRecords();
+  showToast('삭제됐어요.');
+}
+
+// ══════════════════════════════════════
+// 비교 탭
+// ══════════════════════════════════════
+function renderCompareSelects() {
+  const records = load('hc_records', []);
+  const yA = document.getElementById('yearA');
+  const yB = document.getElementById('yearB');
+  const opts = records.map(r => `<option value="${r.date}">${r.date}</option>`).join('');
+  yA.innerHTML = '<option value="">이전 검진</option>' + opts;
+  yB.innerHTML = '<option value="">최근 검진</option>' + opts;
+  if (records.length >= 2) {
+    yA.value = records[records.length - 2].date;
+    yB.value = records[records.length - 1].date;
+    renderCompare();
+  }
+}
+
+function renderCompare() {
+  const records = load('hc_records', []);
+  const dateA = document.getElementById('yearA').value;
+  const dateB = document.getElementById('yearB').value;
+  const el = document.getElementById('compareResult');
+
+  if (!dateA || !dateB || dateA === dateB) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">두 개의 다른 검진일을 선택하세요.</div></div>';
+    return;
+  }
+
+  const rA = records.find(r => r.date === dateA);
+  const rB = records.find(r => r.date === dateB);
+  if (!rA || !rB) { el.innerHTML = '<p style="color:var(--text2)">선택한 기록을 찾을 수 없어요.</p>'; return; }
+
+  const mA = rA.metrics || {};
+  const mB = rB.metrics || {};
+
+  const metricLabels = {
+    '혈압_수축기':'혈압(수)',  '혈압_이완기':'혈압(이)', '공복혈당':'혈당',
+    '총콜레스테롤':'총콜레', 'HDL콜레스테롤':'HDL', 'LDL콜레스테롤':'LDL',
+    '중성지방':'중성지방', 'ALT':'ALT', 'AST':'AST',
+    '체중':'체중', 'BMI':'BMI', '허리둘레':'허리'
+  };
+
+  const allKeys = [...new Set([...Object.keys(mA), ...Object.keys(mB)])];
+  const maxVals = {};
+  allKeys.forEach(k => maxVals[k] = Math.max(mA[k]||0, mB[k]||0, 1));
+
+  const rows = allKeys.filter(k => mA[k] != null || mB[k] != null).map(k => {
+    const vA = mA[k]; const vB = mB[k];
+    const label = metricLabels[k] || k;
+    const maxW = 120;
+    const wA = vA != null ? Math.round(vA / maxVals[k] * maxW) : 0;
+    const wB = vB != null ? Math.round(vB / maxVals[k] * maxW) : 0;
+    const delta = (vA != null && vB != null) ? (vB - vA) : null;
+    const deltaStr = delta === null ? '-' : (delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1));
+    const deltaCls = delta === null ? 'delta-eq' : (delta > 0 ? 'delta-up' : delta < 0 ? 'delta-dn' : 'delta-eq');
+
+    return `
+      <div class="metric-row">
+        <div class="metric-name">${label}</div>
+        <div class="metric-bars">
+          <div class="metric-bar-wrap">
+            <div class="metric-bar bar-prev" style="width:${wA}px"></div>
+            <span style="font-size:10px; color:var(--text3); font-family:'DM Mono',monospace;">${vA ?? '-'}</span>
+          </div>
+          <div class="metric-bar-wrap">
+            <div class="metric-bar bar-curr" style="width:${wB}px"></div>
+            <span style="font-size:10px; color:var(--accent); font-family:'DM Mono',monospace;">${vB ?? '-'}</span>
+          </div>
+        </div>
+        <div class="metric-delta ${deltaCls}">${deltaStr}</div>
+      </div>
+    `;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex; gap:16px; margin-bottom:12px; font-size:11px; font-family:'DM Mono',monospace;">
+      <span><span style="display:inline-block;width:12px;height:6px;background:var(--text3);border-radius:3px;vertical-align:middle;margin-right:4px;"></span>${dateA}</span>
+      <span><span style="display:inline-block;width:12px;height:6px;background:var(--accent);border-radius:3px;vertical-align:middle;margin-right:4px;"></span>${dateB}</span>
+    </div>
+    ${rows || '<p style="color:var(--text2);font-size:13px;">수치 데이터가 없어요. AI 분석 시 자동으로 추출됩니다.</p>'}
+  `;
+}
+
+// ══════════════════════════════════════
+// 설정 탭
+// ══════════════════════════════════════
+function renderApiKeyRows() {
+  const el = document.getElementById('apiKeyRows');
+  el.innerHTML = apiKeys.map((k, i) => `
+    <div class="api-row">
+      <span class="api-label">키 ${i+1}</span>
+      <input class="api-input" type="password" id="apiKey_${i}"
+        value="${k}" placeholder="AIzaSy...">
+      <div class="api-status ${apiKeyStatus[i] === 'idle' && k ? 'active' : apiKeyStatus[i]}" id="apiDot_${i}"></div>
+      ${apiKeys.length > 1 ? `<button onclick="removeApiKey(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;">✕</button>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderApiStatusDots() {
+  apiKeys.forEach((k, i) => {
+    const dot = document.getElementById('apiDot_' + i);
+    if (dot) {
+      dot.className = 'api-status';
+      if (apiKeyStatus[i] === 'used') dot.classList.add('used');
+      else if (apiKeyStatus[i] === 'error') dot.classList.add('error');
+      else if (k) dot.classList.add('active');
+    }
+  });
+}
+
+function addApiKeyRow() {
+  apiKeys.push('');
+  apiKeyStatus.push('idle');
+  renderApiKeyRows();
+}
+
+function removeApiKey(i) {
+  if (apiKeys.length <= 1) return;
+  apiKeys.splice(i, 1);
+  apiKeyStatus.splice(i, 1);
+  renderApiKeyRows();
+}
+
+function saveApiKeys() {
+  apiKeys = Array.from({ length: apiKeys.length }, (_, i) => {
+    const el = document.getElementById('apiKey_' + i);
+    return el ? el.value.trim() : '';
+  }).filter((k, i) => k || i === 0);
+  apiKeyStatus = apiKeys.map(() => 'idle');
+  save('hc_apiKeys', apiKeys);
+  renderApiStatusDots();
+  showToast('API 키가 저장됐어요!');
+}
+
+// ══════════════════════════════════════
+// 데이터 내보내기/가져오기
+// ══════════════════════════════════════
+function exportData() {
+  const data = { records: load('hc_records', []), exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `health_records_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.records) {
+        save('hc_records', data.records);
+        showToast(`${data.records.length}개 기록을 가져왔어요!`);
+      }
+    } catch { showToast('파일 형식이 올바르지 않아요.'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function clearAllData() {
+  if (!confirm('모든 건강검진 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
+  localStorage.removeItem('hc_records');
+  showToast('전체 삭제됐어요.');
+}
+
+// ══════════════════════════════════════
+// 유틸
+// ══════════════════════════════════════
+let toastTimer;
+function showToast(msg, duration = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+</script>
+</body>
+</html>
